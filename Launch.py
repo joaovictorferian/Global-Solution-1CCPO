@@ -1,0 +1,127 @@
+import time
+import threading
+from playsound import playsound
+
+class Launch:
+
+    TICKS_DECOLAGEM = 2
+    TICKS_SUBIDA    = 3
+    contagem = 10
+
+    def __init__(self, telemetry):
+        self.telemetry  = telemetry
+        self.tickNow = 0
+        self.phase  = "Decolagem"
+
+        self.telemetry.fuel = 100.0
+        self.telemetry.battery = 100.0
+        self.telemetry.altitude = 0.0
+        self.telemetry.signal = 100.0
+        self.telemetry.structural_integrity = 100.0
+        self.telemetry.status = "Normal"
+
+    # ─── loop principal ──────────────────────────────
+
+    def run(self):
+        print("\n" + "═" * 50)
+        print("  FASE 1 — LANÇAMENTO")
+        print("═" * 50)
+
+        def audio():
+            playsound("audio/decolagem.mp3")
+
+        thread_audio = threading.Thread(target=audio)
+        thread_audio.start()
+        time.sleep(1)
+
+        while self.contagem > 0:
+            print(f"Iniciando lançamento em: {self.contagem}")
+            time.sleep(1)
+            self.contagem -= 1
+
+        time.sleep(9)
+
+
+        total_ticks = self.TICKS_DECOLAGEM + self.TICKS_SUBIDA
+
+        while self.tickNow < total_ticks:
+
+            if self.tickNow < self.TICKS_DECOLAGEM:
+                self.phase = "Decolagem"
+            else:
+                self.phase = "Subida"
+
+            self._update()
+            self._check_alerts()
+            self._print_status()
+
+            self.tickNow += 1
+
+        print("\n  Órbita atingida. Lançamento concluído.")
+        return self.telemetry
+
+    def _update(self):
+        telemetry = self.telemetry
+
+        if self.phase == "Decolagem":
+            telemetry.fuel      -= 10.0
+            telemetry.battery   -= 8.0
+            telemetry.altitude  += 40.0
+            telemetry.signal    -= 15.0   # sinal cai por vibração e atmosfera densa
+
+        elif self.phase == "Subida":
+            telemetry.fuel      -= 5.0
+            telemetry.battery   -= 3.0
+            telemetry.altitude  += 160.0
+            telemetry.signal    += 5.0    # sinal começa a estabilizar fora da atmosfera
+
+        # garante que nenhum valor passa dos limites possíveis
+        telemetry.fuel    = max(0.0, min(100.0, telemetry.fuel))
+        telemetry.battery = max(0.0, min(100.0, telemetry.battery))
+        telemetry.signal  = max(0.0, min(100.0, telemetry.signal))
+
+    # ─── verifica alertas depois de cada update ──────
+
+    def _check_alerts(self):
+        telemetry = self.telemetry
+
+        if telemetry.fuel <= 0:
+            telemetry.status = "critical"
+            telemetry.log(f"[tick {self.tickNow}] CRÍTICO — Combustível esgotado antes de atingir órbita")
+
+        elif telemetry.fuel <= 10:
+            telemetry.status = "critical"
+            telemetry.log(f"[tick {self.tickNow}] CRÍTICO — Nível de combustível EXTREMAMENTE BAIXO antes de atingir órbita")
+
+        elif telemetry.fuel <= 60:
+            if telemetry.status == "nominal":
+                telemetry.status = "warning"
+            telemetry.log(f"[tick {self.tickNow}] AVISO — Combustível baixo: {telemetry.fuel:.1f}%")
+
+        if telemetry.battery <= 30:
+            telemetry.status = "critical"
+            telemetry.log(f"[tick {self.tickNow}] CRÍTICO — Nível da bateria baixo: {telemetry.battery:.1f}%")
+
+        elif telemetry.battery <= 70:
+            if telemetry.status == "nominal":
+                telemetry.status = "warning"
+            telemetry.log(f"[tick {self.tickNow}] AVISO — Nível da bateria relativamente baixo: {telemetry.battery:.1f}%")
+
+        if telemetry.structural_integrity <= 80:
+            telemetry.status = "critical"
+            telemetry.log(f"[tick {self.tickNow}] CRÍTICO — Falha estrutural: {telemetry.structural_integrity:.1f}%")
+
+    # ─── imprime o estado do tick atual ──────────────
+
+    def _print_status(self):
+        telemetry = self.telemetry
+        icons = {"Normal": "✓", "Warning": "⚠", "Critical": "✖"}
+        icon  = icons.get(telemetry.status, "?")
+
+        print(
+            f"  tick {self.tickNow + 1} [{self.phase:9s}] {icon} | "
+            f"Alt: {telemetry.altitude:5.0f}km | "
+            f"Comb: {telemetry.fuel:5.1f}% | "
+            f"Bat: {telemetry.battery:5.1f}% | "
+            f"Sinal: {telemetry.signal:5.1f}%"
+        )

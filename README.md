@@ -315,6 +315,7 @@ O servidor Python emite eventos via SocketIO a cada tick. O frontend escuta esse
 - NASA (2026). *Small Spacecraft Technology State of the Art — Chapter 3.0: Power*. Dados de células solares (Tabela 3-1), baterias (Tabela 3-4), sistemas PMAD (Tabela 3-8).
 - Hundman et al. (2018). *Detecting Spacecraft Anomalies Using LSTMs and Nonparametric Dynamic Thresholding*. KDD 2018. Dataset SMAP/MSL de telemetria com anomalias rotuladas (referência para arquitetura RAG).
 - Work of the US Gov. (August 1, 1996) * NASA NTRS - Spacecraft System Failures and Anomalies Attributed to the Natural Space Environment*
+- Wikipedia, The Free Encyclopedia. (7 June 2026) *Free-space path loss*
 ---
 
 ## Integrantes

@@ -21,7 +21,7 @@ class CascadeFailure:
         },
     }
 
-    def propagar(self, telemetry, atributo_origem, dano, sistemas_afetados=None):
+    def propagar(self, telemetry, atributo_origem, dano, sistemas_afetados=None, callbacks=None):
         if sistemas_afetados is None:
             sistemas_afetados = set()
 
@@ -44,6 +44,9 @@ class CascadeFailure:
                 f"[CASCADE] {atributo_origem} → {dependente} | "
                 f"Dano propagado: {dano_propagado:.1f}"
             )
+
+            if callbacks and callbacks.get("emitir_cascade"):
+                callbacks["emitir_cascade"](atributo_origem, dependente, dano_propagado)
 
             print(
                 f"  ⚡ [CASCADE] {atributo_origem} → {dependente} | "

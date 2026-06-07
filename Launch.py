@@ -8,8 +8,8 @@ class Launch:
     TICKS_SUBIDA    = 3
     contagem = 10
 
-    def __init__(self, telemetry, event_engine, dashboard):
-        self.dashboard = dashboard
+    def __init__(self, telemetry, event_engine,callbacks=None):
+        self.callbacks = callbacks or {}
         self.telemetry = telemetry
         self.event_engine = event_engine
         self.tickNow = 0
@@ -29,19 +29,20 @@ class Launch:
         print("  FASE 1 — LANÇAMENTO")
         print("═" * 50)
 
-        # def audio():
-        #     playsound("audio/decolagem.mp3")
-        #
-        # thread_audio = threading.Thread(target=audio)
-        # thread_audio.start()
-        # time.sleep(1)
-        #
-        # while self.contagem > 0:
-        #     print(f"Iniciando lançamento em: {self.contagem}")
-        #     time.sleep(1)
-        #     self.contagem -= 1
-        #
-        # time.sleep(9)
+        if self.callbacks.get("emitir_audio"):
+            self.callbacks["emitir_audio"]("decolagem")
+            
+        while self.contagem > 0:
+            print(f"Iniciando lançamento em: {self.contagem}")
+            if self.callbacks.get("emitir_contagem"):
+                self.callbacks["emitir_contagem"](self.contagem)
+            time.sleep(1)
+            self.contagem -= 1
+
+        if self.callbacks.get("emitir_contagem"):
+            self.callbacks["emitir_contagem"](0)
+
+        time.sleep(9)
 
 
         total_ticks = self.TICKS_DECOLAGEM + self.TICKS_SUBIDA
@@ -57,11 +58,16 @@ class Launch:
             self.event_engine.processar_eventos_ativos(self.telemetry, self.tickNow)
             self._check_alerts()
             self._print_status()
-            self.dashboard.registrar(1, self.telemetry, "launch")
+
+            if self.callbacks.get("emitir_telemetria"):
+                self.callbacks["emitir_telemetria"](
+                    self.telemetry, "launch", self.tickNow, 1,
+                    {}
+                )
+
             self.tickNow += 1
 
         print("\n  Órbita atingida. Lançamento concluído.")
-        time.sleep(5)
         return self.telemetry
 
     def _update(self):

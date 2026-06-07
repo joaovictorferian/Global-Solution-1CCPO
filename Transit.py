@@ -51,8 +51,8 @@ class Transit:
         },
     }
 
-    def __init__(self, telemetry, duration, destino, event_engine, dashboard):
-        self.dashboard = dashboard
+    def __init__(self, telemetry, duration, destino, event_engine, callbacks=None):
+        self.callbacks = callbacks or {}
         self.telemetry = telemetry
         self.event_engine = event_engine
         self.duration = duration
@@ -69,7 +69,7 @@ class Transit:
         self.consumo_base_kw = perfil["consumo_base_kw"]
         self.geracao_solar_kw = perfil["geracao_solar_kw"]
         self.geracao_nuclear_kw = perfil["geracao_nuclear_kw"]
-        self._nuclear_ativa = False
+        self.nuclear_ativa = False
 
         match self.destino:
             case "Marte":
@@ -168,7 +168,21 @@ class Transit:
                 time.sleep(5)
 
             self._print_status(forcar=alertas_novos)
-            self.dashboard.registrar(self.horas_por_tick, self.telemetry, "transit")
+
+            print(f"[DEBUG] callbacks keys: {list(self.callbacks.keys())}")
+            if self.callbacks.get("emitir_telemetria"):
+                self.callbacks["emitir_telemetria"](
+                    self.telemetry, "transit", self.tick, self.horas_por_tick,
+                    {
+                        "fator_solar": self._fator_solar_atual,
+                        "nuclear_ativa": self.nuclear_ativa,
+                        "geracao_solar_kw": round(self._geracao_solar_atual, 1),
+                        "geracao_nuclear_kw": round(self._geracao_nuclear_atual, 0),
+                        "geracao_total_kw": round(self._geracao_total_atual, 1),
+                        "consumo_total_kw": round(self._consumo_total_atual, 1),
+                    }
+                )
+
             self.tick += 1
 
             if self.telemetry.status == "critical":
@@ -185,7 +199,6 @@ class Transit:
                 return self.telemetry
 
         print("\n  Trânsito concluído.")
-        time.sleep(5)
         return self.telemetry
 
     # ─── atualiza os valores a cada tick ─────────────────────────
@@ -237,6 +250,14 @@ class Transit:
         variacao_pct = (saldo_kw * dt / self.CAPACIDADE_BATERIA_KWH) * 100
         telemetria.battery += variacao_pct
         telemetria.battery = max(0.0, min(100.0, telemetria.battery))
+
+        # dentro de _update(), onde calcula a geração:
+        self._geracao_solar_atual = geracao_solar_kw
+        self._geracao_nuclear_atual = geracao_nuclear_kw
+        self._consumo_total_atual = consumo_total_kw
+        self._geracao_total_atual = geracao_solar_kw + geracao_nuclear_kw
+
+        telemetria.fuel -= 0.5
 
         # radiação
         if self.distance_traveled < self.MAGNETOSFERA_KM:

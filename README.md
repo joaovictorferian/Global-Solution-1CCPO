@@ -31,7 +31,6 @@ Global-Solution-1CCPO/
 ├── EventCatalog.py        # Catálogo dos 12 eventos possíveis
 ├── CascadeFailure.py      # Grafo de dependências entre subsistemas
 ├── AdvisorAI.py           # Cliente HTTP que consulta a IA no Colab
-├── Dashboard.py           # Gráfico matplotlib (modo terminal)
 ├── templates/
 │   └── console.html       # Interface web do console da nave
 ├── static/

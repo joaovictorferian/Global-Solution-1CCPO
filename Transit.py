@@ -4,17 +4,13 @@ import time
 
 
 class Transit:
-    # — constantes astronômicas reais (NASA) —
-    D_SOL_TERRA_KM = 150_000_000.0
-    D_SOL_MARTE_KM = 228_000_000.0
-    IRRADIANCIA_TERRA = 1368.0
-    MAGNETOSFERA_KM = 60_000.0
-    CAPACIDADE_BATERIA_KWH = 200.0
-    DISTANCIA_ATIVACAO_NUCLEAR_KM = 152_000_000
+    distanciaSolTerra = 150_000_000.0
+    distanciaSolMarte = 228_000_000.0
+    irrandinciaSolTerra = 1368.0
+    magnetosfera = 60_000.0
+    capacidadeBateria_KWH = 200.0
+    distanciaParaAtivacaoNuclear = 152_000_000
 
-    # — perfis de nave: destino, frequência, potência de transmissão e thresholds —
-    # Potência Tx:  30 dBm (pequena) / 60 dBm (média) / 90 dBm (grande)
-    # Thresholds de Rx: sensibilidade mínima do receptor por porte de nave
     PERFIL_NAVE = {
         "LEO": {
             "distancia_km": 400,
@@ -79,8 +75,6 @@ class Transit:
             case "Lua":
                 self.intervalo = 20
 
-
-        # compressão de tempo para destinos longos
         if duration > 1000:
             self.horas_por_tick = 50
             self.intervalo_print = 20
@@ -94,14 +88,10 @@ class Transit:
         self.total_ticks = duration // self.horas_por_tick
         self.velocidade_kmh = self.distancia_total / duration
 
-        # cache para exibição
         self._fator_solar_atual = 1.0
         self._potencia_rx_atual = 0.0
 
-    # ─── FSPL em dB ─────────────────────────────────────────────
-    # Fonte: ITU-R P.525
-    # FSPL(dB) = 20·log10(d_km) + 20·log10(f_MHz) + 32.44
-
+    # FSPL = Free Space Path Loss - Fórmula responsável por calcular a perda de força do sinal de rádio no espaço profundo.
     def _fspl(self, distancia_km):
         if distancia_km <= 0:
             distancia_km = 1.0
@@ -110,39 +100,26 @@ class Transit:
                 + 32.44)
 
     def _potencia_rx(self, distancia_km):
-        """
-        Potência recebida em dBm.
-        potencia_recebida = potencia_tx - perda_fspl
-        Quanto mais negativo, mais fraco o sinal.
-        """
         perda = self._fspl(distancia_km)
-        # ruído de propagação: ±1.5 dB por variações atmosféricas e de antena
         ruido = random.uniform(-1.5, 1.5)
         return self.potencia_tx_dbm - perda + ruido
 
-    # ─── lei do inverso do quadrado para solar ───────────────────
-    # Fonte: NASA Small Spacecraft SoA (2026), seção 3.2
-
     def _fator_solar(self):
-        # LEO e Lua ficam na mesma distância do Sol que a Terra (variação < 0.3%)
-        # Apenas Marte sofre degradação solar significativa: 43% ao chegar
-        # Fonte: NASA Small Spacecraft SoA (2026), seção 3.2
         if self.destino != "Marte":
             return 1.0
         progresso = min(1.0, self.distance_traveled / self.distancia_total)
-        d_sol_atual = (self.D_SOL_TERRA_KM
-                       + progresso * (self.D_SOL_MARTE_KM - self.D_SOL_TERRA_KM))
-        return (self.D_SOL_TERRA_KM / d_sol_atual) ** 2
+        d_sol_atual = (self.distanciaSolTerra
+                       + progresso * (self.distanciaSolMarte - self.distanciaSolTerra))
+        return (self.distanciaSolTerra / d_sol_atual) ** 2
 
     def verificar_nuclear(self):
         if self.geracao_nuclear_kw == 0.0:
             self.nuclear_ativa = False
             return
 
-        distancia_do_sol = self.D_SOL_TERRA_KM + self.distance_traveled
-        self.nuclear_ativa = distancia_do_sol >= self.DISTANCIA_ATIVACAO_NUCLEAR_KM
+        distancia_do_sol = self.distanciaSolTerra + self.distance_traveled
+        self.nuclear_ativa = distancia_do_sol >= self.distanciaParaAtivacaoNuclear
 
-    # ─── loop principal ──────────────────────────────────────────
 
     def run(self):
         banda = ("UHF" if self.frequencia_mhz < 1000
@@ -154,7 +131,7 @@ class Transit:
         print(f"  Comunicação: {self.frequencia_mhz:.0f} MHz ({banda}) | Tx: {self.potencia_tx_dbm} dBm")
         print(f"  Energia    : Solar {self.geracao_solar_kw:.1f} kW | Nuclear {self.geracao_nuclear_kw:.0f} kW")
         print(f"  Consumo    : Base {self.consumo_base_kw:.1f} kW | Comms {self.consumo_comms_kw:.1f} kW")
-        print(f"  Bateria    : {self.CAPACIDADE_BATERIA_KWH:.0f} kWh")
+        print(f"  Bateria    : {self.capacidadeBateria_KWH:.0f} kWh")
         print(f"  Duração    : {self.duration}h | 1 tick = {self.horas_por_tick}h | Total: {self.total_ticks} ticks")
         print("═" * 70)
 
@@ -200,8 +177,7 @@ class Transit:
 
         print("\n  Trânsito concluído.")
         return self.telemetry
-
-    # ─── atualiza os valores a cada tick ─────────────────────────
+    
 
     def _update(self):
         telemetria = self.telemetry
@@ -215,7 +191,6 @@ class Transit:
         fator = self._fator_solar()
         self._fator_solar_atual = fator
 
-        # geração solar em kW
         geracao_solar_kw = self.geracao_solar_kw * fator * random.uniform(0.85, 1.15)
 
         nuclear_desativada = False
@@ -224,7 +199,6 @@ class Transit:
                 nuclear_desativada = True
                 break
 
-        # geração nuclear em kW — só se ativa
         self.verificar_nuclear()
         if self.nuclear_ativa and not nuclear_desativada:
             geracao_nuclear_kw = self.geracao_nuclear_kw * random.uniform(0.95, 1.05)
@@ -233,25 +207,21 @@ class Transit:
 
         geracao_total_kw = geracao_solar_kw + geracao_nuclear_kw
 
-        # consumo em kW
         consumo_base_kw = self.consumo_base_kw * random.uniform(0.90, 1.10)
         consumo_total_kw = consumo_base_kw + self.consumo_comms_kw
 
-        # temperatura dos módulos
-        # temperatura dos módulos
-        temp_solar = 30.0 * self._fator_solar_atual  # aquecimento solar
+
+        temp_solar = 30.0 * self._fator_solar_atual  
         temp_consumo = 10.0 * (consumo_base_kw / 4.0)
-        temp_base = -40.0  # temperatura base com isolamento térmico
+        temp_base = -40.0  
         temp_alvo = temp_base + temp_solar + temp_consumo
         telemetria.module_temp += (temp_alvo - telemetria.module_temp) * 0.01 * dt
 
-        # balanço energético — variação percentual da bateria
         saldo_kw = geracao_total_kw - consumo_total_kw
-        variacao_pct = (saldo_kw * dt / self.CAPACIDADE_BATERIA_KWH) * 100
+        variacao_pct = (saldo_kw * dt / self.capacidadeBateria_KWH) * 100
         telemetria.battery += variacao_pct
         telemetria.battery = max(0.0, min(100.0, telemetria.battery))
 
-        # dentro de _update(), onde calcula a geração:
         self._geracao_solar_atual = geracao_solar_kw
         self._geracao_nuclear_atual = geracao_nuclear_kw
         self._consumo_total_atual = consumo_total_kw
@@ -259,18 +229,16 @@ class Transit:
 
         telemetria.fuel -= 0.5
 
-        # radiação
-        if self.distance_traveled < self.MAGNETOSFERA_KM:
-            rad_hora = 0.3 + 0.3 * (self.distance_traveled / self.MAGNETOSFERA_KM)
+        if self.distance_traveled < self.magnetosfera:
+            rad_hora = 0.3 + 0.3 * (self.distance_traveled / self.magnetosfera)
         else:
-            excesso = self.distance_traveled - self.MAGNETOSFERA_KM
+            excesso = self.distance_traveled - self.magnetosfera
             rad_hora = 0.6 + (excesso / 200_000.0)
             rad_hora = min(rad_hora, 4.0)
 
         rad_hora *= random.uniform(0.80, 1.30)
         telemetria.radiation_exposure += rad_hora * dt
 
-    # ─── verifica alertas ─────────────────────────────────────────
 
     def _check_alerts(self):
         t = self.telemetry
@@ -322,7 +290,6 @@ class Transit:
 
         return novo
 
-    # ─── imprime conforme intervalo ou alerta ─────────────────────
 
     def _print_status(self, forcar=False):
         if not forcar and (self.tick % self.intervalo_print != 0):

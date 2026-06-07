@@ -43,7 +43,6 @@ class EventEngine:
 
         evento_sorteado = random.choices(eventos_validos, weights=pesos, k=1)[0]
 
-        # emitir para web OU terminal
         if self.callbacks.get("emitir_evento"):
             self.callbacks["emitir_evento"](evento_sorteado, evento_sorteado["opcoes_resposta"])
 
@@ -64,10 +63,9 @@ class EventEngine:
 
             # aguarda resposta do frontend
             escolha = self.callbacks["aguardar_resposta"]()
+
         else:
-
-
-            # modo terminal (fallback)
+            # modo terminal
             print("\n" + "!" * 70)
             print(f"  ⚠ EVENTO: {evento_sorteado['nome']}")
             print("!" * 70)
@@ -116,7 +114,7 @@ class EventEngine:
             ticks_restantes = (tick_inicio + evento["ticks_para_resolver"]) - tick_atual
 
             if ticks_restantes > 0:
-                # ainda em resolução — aplica dano contínuo por tick
+                # aplica dano contínuo por tick
                 dano_por_tick = (evento["impacto_base"] * evento["severidade"]) / evento["ticks_para_resolver"]
 
                 for atributo in evento["atributos_afetados"]:

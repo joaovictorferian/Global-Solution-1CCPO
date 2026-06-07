@@ -5,7 +5,6 @@ from Operation    import Operation
 from Return       import Return
 from EventEngine  import EventEngine
 from CascadeFailure import CascadeFailure
-from Dashboard import Dashboard
 
 DESTINOS = {
     "1": ("LEO",   {"transito": 24,   "operacao": 48,   "retorno": 24}),
@@ -30,28 +29,27 @@ telemetry = Telemetry()
 
 cascade = CascadeFailure()
 
-dashboard = Dashboard()
 
 tempo_acumulado = 0
 
 engine_launch    = EventEngine(nome, "launch", cascade, )
-launch    = Launch(telemetry, engine_launch, dashboard)
+launch    = Launch(telemetry, engine_launch)
 telemetry = launch.run()
 
 tempo_acumulado += 5
 
 engine_transit   = EventEngine(nome, "transit", cascade)
-transit   = Transit(telemetry, fases["transito"], nome, engine_transit, dashboard)
+transit   = Transit(telemetry, fases["transito"], nome, engine_transit)
 telemetry = transit.run()
 
 perfil_nave = transit.PERFIL_NAVE[nome]
 
 engine_operation = EventEngine(nome, "operation", cascade)
-operation = Operation(telemetry, fases["operacao"], nome, perfil_nave, engine_operation, dashboard)
+operation = Operation(telemetry, fases["operacao"], nome, perfil_nave, engine_operation)
 telemetry = operation.run()
 
 engine_return    = EventEngine(nome, "return", cascade)
-retorno   = Return(telemetry, fases["retorno"], nome, perfil_nave, engine_return, dashboard)
+retorno   = Return(telemetry, fases["retorno"], nome, perfil_nave, engine_return)
 telemetry = retorno.run()
 
 if not telemetry.sucesso:
@@ -67,4 +65,3 @@ else:
     print(f"  Status final         : {telemetry.status.upper()}")
     print(f"{'═' * 70}")
 
-dashboard.exibir(nome)

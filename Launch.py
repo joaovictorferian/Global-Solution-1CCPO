@@ -22,7 +22,7 @@ class Launch:
         self.telemetry.structural_integrity = 100.0
         self.telemetry.status = "nominal"
 
-    # ─── loop principal ──────────────────────────────
+
 
     def run(self):
         print("\n" + "═" * 50)
@@ -31,7 +31,7 @@ class Launch:
 
         if self.callbacks.get("emitir_audio"):
             self.callbacks["emitir_audio"]("decolagem")
-            
+
         while self.contagem > 0:
             print(f"Iniciando lançamento em: {self.contagem}")
             if self.callbacks.get("emitir_contagem"):
@@ -87,12 +87,9 @@ class Launch:
             telemetry.signal    += 5.0
             telemetry.module_temp -= 5.0
 
-        # garante que nenhum valor passa dos limites possíveis
         telemetry.fuel    = max(0.0, min(100.0, telemetry.fuel))
         telemetry.battery = max(0.0, min(100.0, telemetry.battery))
         telemetry.signal  = max(0.0, min(100.0, telemetry.signal))
-
-    # ─── verifica alertas depois de cada update ──────
 
     def _check_alerts(self):
         telemetry = self.telemetry
@@ -136,8 +133,6 @@ class Launch:
                 telemetry.status = "warning"
                 telemetry.log(f"[T+{self.tickNow}h] AVISO — Temperatura dos módulos: {telemetry.module_temp:.1f}°C")
                 novo = True
-
-    # ─── imprime o estado do tickNow atual ──────────────
 
     def _print_status(self):
         telemetry = self.telemetry

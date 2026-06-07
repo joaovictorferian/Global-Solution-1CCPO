@@ -2,18 +2,16 @@ import random
 import math
 import time
 
-
 class Return:
-    D_SOL_TERRA_KM = 150_000_000.0
-    D_SOL_MARTE_KM = 228_000_000.0
-    IRRADIANCIA_TERRA = 1368.0
-    MAGNETOSFERA_KM = 60_000.0
-    CAPACIDADE_BATERIA_KWH = 200.0
-    DISTANCIA_ATIVACAO_NUCLEAR_KM = 152_000_000
+    distanciaSolTerra = 150_000_000.0
+    distanciaSolMarte = 228_000_000.0
+    irrandianciaSolTerra = 1368.0
+    magnetosfera = 60_000.0
+    capacidadeBateria_KWH = 200.0
+    distanciaParaAtivacaoNuclear = 152_000_000
 
-    # temperatura máxima do casco antes de alerta (reentrada)
-    TEMP_CASCO_WARNING = 800.0  # °C
-    TEMP_CASCO_CRITICAL = 1200.0  # °C
+    TEMP_CASCO_WARNING = 800.0
+    TEMP_CASCO_CRITICAL = 1200.0
 
     def __init__(self, telemetry, duration, destino, perfil_nave, event_engine, callbacks=None):
         self.callbacks = callbacks or {}
@@ -42,7 +40,6 @@ class Return:
             case _:
                 self.intervalo = 20
 
-        # distância começa no máximo e decrementa
         self.distance_remaining = float(self.distancia_total)
 
         if duration > 1000:
@@ -57,7 +54,6 @@ class Return:
 
         self.total_ticks = duration // self.horas_por_tick
 
-        # reseta status entre fases
         if self.telemetry.status != "nominal":
             self.telemetry.status = "nominal"
         self._fator_solar_atual = 0.43
@@ -66,8 +62,7 @@ class Return:
 
         self._check_alerts()
 
-    # ─── FSPL pela distância atual ────────────────────────────────
-
+    # FSPL = Free Space Path Loss - Fórmula responsável por calcular a perda de força do sinal de rádio no espaço profundo.
     def _fspl(self, distancia_km):
         if distancia_km <= 0:
             distancia_km = 1.0
@@ -80,20 +75,15 @@ class Return:
         ruido = random.uniform(-1.5, 1.5)
         return self.potencia_tx_dbm - perda + ruido
 
-    # ─── solar: inverso do quadrado no sentido de volta ──────────
-
     def _fator_solar(self):
-        # LEO e Lua ficam na mesma distância do Sol que a Terra durante todo o retorno
-        # Apenas Marte tem degradação solar — e recupera conforme se aproxima da Terra
         if self.destino != "Marte":
             return 1.0
         progresso = min(1.0, 1.0 - (self.distance_remaining / self.distancia_total))
-        d_sol_atual = (self.D_SOL_MARTE_KM
-                       - progresso * (self.D_SOL_MARTE_KM - self.D_SOL_TERRA_KM))
-        d_sol_atual = max(self.D_SOL_TERRA_KM, d_sol_atual)
-        return (self.D_SOL_TERRA_KM / d_sol_atual) ** 2
+        distanciaSolAtual = (self.distanciaSolMarte
+                       - progresso * (self.distanciaSolMarte - self.distanciaSolTerra))
+        distanciaSolAtual = max(self.distanciaSolTerra, distanciaSolAtual)
+        return (self.distanciaSolTerra / distanciaSolAtual) ** 2
 
-    # ─── loop principal ──────────────────────────────────────────
 
     def run(self):
         print("\n" + "═" * 70)
@@ -145,8 +135,6 @@ class Return:
         print("\n  Retorno concluído. Nave em aproximação à Terra.")
         return self.telemetry
 
-    # ─── atualiza os valores a cada tick ─────────────────────────
-
     def _update(self):
         t = self.telemetry
         dt = self.horas_por_tick
@@ -157,8 +145,7 @@ class Return:
         self._fator_solar_atual = fator
         geracao_solar_kw = self.geracao_solar_kw * fator * random.uniform(0.85, 1.15)
 
-        # nuclear desativa quando se aproxima do Sol
-        distancia_do_sol = self.D_SOL_TERRA_KM + self.distance_remaining
+        distancia_do_sol = self.distanciaSolTerra + self.distance_remaining
 
         nuclear_desativada = False
         for evento_ativo in self.event_engine.eventos_ativos:
@@ -166,7 +153,7 @@ class Return:
                 nuclear_desativada = True
                 break
 
-        if self.geracao_nuclear_kw > 0 and distancia_do_sol >= self.DISTANCIA_ATIVACAO_NUCLEAR_KM and not nuclear_desativada:
+        if self.geracao_nuclear_kw > 0 and distancia_do_sol >= self.distanciaParaAtivacaoNuclear and not nuclear_desativada:
             geracao_nuclear_kw = self.geracao_nuclear_kw * random.uniform(0.95, 1.05)
             self.nuclear_ativa = True
         else:
@@ -182,18 +169,17 @@ class Return:
         consumo_base_kw = self.consumo_base_kw * random.uniform(0.90, 1.10)
         consumo_total_kw = consumo_base_kw + self.consumo_comms_kw
 
-        temp_solar = 30.0 * self._fator_solar_atual  # aquecimento solar
+        temp_solar = 30.0 * self._fator_solar_atual
         temp_consumo = 10.0 * (consumo_base_kw / 4.0)
-        temp_base = -40.0  # temperatura base com isolamento térmico
+        temp_base = -40.0
         temp_alvo = temp_base + temp_solar + temp_consumo
         t.module_temp += (temp_alvo - t.module_temp) * 0.01 * dt
 
         saldo_kw = geracao_total_kw - consumo_total_kw
-        variacao_pct = (saldo_kw * dt / self.CAPACIDADE_BATERIA_KWH) * 100
+        variacao_pct = (saldo_kw * dt / self.capacidadeBateria_KWH) * 100
         t.battery += variacao_pct
         t.battery = max(0.0, min(100.0, t.battery))
 
-        # dentro de _update(), onde calcula a geração:
         self._geracao_solar_atual = geracao_solar_kw
         self._geracao_nuclear_atual = geracao_nuclear_kw
         self._consumo_total_atual = consumo_total_kw
@@ -206,8 +192,8 @@ class Return:
 
         t.fuel = max(0.0, t.fuel)
 
-        if self.distance_remaining > self.MAGNETOSFERA_KM:
-            excesso = self.distance_remaining - self.MAGNETOSFERA_KM
+        if self.distance_remaining > self.magnetosfera:
+            excesso = self.distance_remaining - self.magnetosfera
             rad_hora = 0.6 + (excesso / 200_000.0)
             rad_hora = min(rad_hora, 4.0)
         else:
@@ -223,8 +209,6 @@ class Return:
             self._hull_temp = max(20.0, self._hull_temp - 5.0 * dt)
             t.module_temp = max(20.0, t.module_temp - 5.0 * dt)
 
-
-    # ─── verifica alertas ─────────────────────────────────────────
 
     def _check_alerts(self):
         t = self.telemetry
@@ -282,8 +266,6 @@ class Return:
                 novo = True
 
         return novo
-
-    # ─── imprime conforme intervalo ou alerta ─────────────────────
 
     def _print_status(self, forcar=False):
         if not forcar and (self.tick % self.intervalo_print != 0):

@@ -3,21 +3,14 @@ import math
 import time
 from pip._internal.operations import check
 
-
 class Operation:
-    # fator solar fixo por destino (lei do inverso do quadrado)
-    # Fonte: NASA Mars Surface Power Decision (2024)
-    CAPACIDADE_BATERIA_KWH = 200.0
+    capacidadeBateria_KWH = 200.0
 
     FATOR_SOLAR_DESTINO = {
         "LEO": 1.00,
         "Lua": 0.99,
         "Marte": 0.43,
     }
-
-    # consumo de instrumentos calibrado para manter ratios reais por destino
-    # Referência: Apollo CSM ~2.2kW (geração ≈ consumo nominal)
-    # LEO: saldo positivo | Lua: déficit lento | Marte: colapso sem nuclear
     CONSUMO_INSTRUMENTOS_W = {
         "LEO": 8.0,
         "Lua": 18.0,
@@ -66,14 +59,10 @@ class Operation:
         self.total_ticks = duration // self.horas_por_tick
         self._potencia_rx_atual = 0.0
 
-        # reseta status se a fase anterior terminou em warning/critical
-        # por condição que não persiste (ex: sinal fraco no trânsito)
         if self.telemetry.status != "nominal":
             self.telemetry.status = "nominal"
 
         self._check_alerts()
-
-    # ─── FSPL fixo na distância do destino ───────────────────────
 
     def _potencia_rx(self):
         perda = (20 * math.log10(self.distancia_km)
@@ -82,7 +71,6 @@ class Operation:
         ruido = random.uniform(-1.5, 1.5)
         return self.potencia_tx_dbm - perda + ruido
 
-    # ─── loop principal ──────────────────────────────────────────
 
     def run(self):
         geracao_solar_media = self.geracao_solar_kw * self.fator_solar
@@ -96,7 +84,7 @@ class Operation:
         print(f"  Destino  : {self.destino} | Solar fixo: {self.fator_solar * 100:.0f}%")
         print(f"  Energia  : Solar ~{geracao_solar_media:.1f} kW | Nuclear ~{geracao_nuclear_media:.0f} kW")
         print(f"  Consumo  : ~{consumo_medio:.1f} kW | Saldo {saldo:+.1f} kW")
-        print(f"  Bateria  : {self.CAPACIDADE_BATERIA_KWH:.0f} kWh")
+        print(f"  Bateria  : {self.capacidadeBateria_KWH:.0f} kWh")
         print(f"  Duração  : {self.duration}h | 1 tick = {self.horas_por_tick}h | Total: {self.total_ticks} ticks")
         print("═" * 70)
 
@@ -138,7 +126,6 @@ class Operation:
         print("\n  Operação concluída.")
         return self.telemetry
 
-    # ─── atualiza os valores a cada tick ─────────────────────────
 
     def _update(self):
         t = self.telemetry
@@ -165,18 +152,17 @@ class Operation:
         consumo_base_kw = self.consumo_base_kw * random.uniform(0.90, 1.10)
         consumo_total_kw = consumo_base_kw + self.consumo_comms_kw
 
-        temp_solar = 30.0 * self.fator_solar  # aquecimento solar
+        temp_solar = 30.0 * self.fator_solar
         temp_consumo = 10.0 * (consumo_base_kw / 4.0)
         temp_base = -40.0  # temperatura base com isolamento térmico
         temp_alvo = temp_base + temp_solar + temp_consumo
         t.module_temp += (temp_alvo - t.module_temp) * 0.01 * dt
 
         saldo_kw = geracao_total_kw - consumo_total_kw
-        variacao_pct = (saldo_kw * dt / self.CAPACIDADE_BATERIA_KWH) * 100
+        variacao_pct = (saldo_kw * dt / self.capacidadeBateria_KWH) * 100
         t.battery += variacao_pct
         t.battery = max(0.0, min(100.0, t.battery))
 
-        # dentro de _update(), onde calcula a geração:
         self._geracao_solar_atual = geracao_solar_kw
         self._geracao_nuclear_atual = geracao_nuclear_kw
         self._consumo_total_atual = consumo_total_kw
@@ -188,7 +174,6 @@ class Operation:
         rad_hora = 0.8 * random.uniform(0.80, 1.30)
         t.radiation_exposure += rad_hora * dt
 
-    # ─── verifica alertas ─────────────────────────────────────────
 
     def _check_alerts(self):
         t = self.telemetry
@@ -244,7 +229,6 @@ class Operation:
 
         return novo
 
-    # ─── imprime conforme intervalo ou alerta ─────────────────────
 
     def _print_status(self, forcar=False):
         if not forcar and (self.tick % self.intervalo_print != 0):

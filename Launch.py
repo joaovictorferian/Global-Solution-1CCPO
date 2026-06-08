@@ -23,7 +23,6 @@ class Launch:
         self.telemetry.status = "nominal"
 
 
-
     def run(self):
         print("\n" + "═" * 50)
         print("  FASE 1 — LANÇAMENTO")

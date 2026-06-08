@@ -1,6 +1,7 @@
 import random
 import math
 import time
+from MissionReport import MissionReport
 
 class Return:
     distanciaSolTerra = 150_000_000.0
@@ -35,10 +36,14 @@ class Return:
         match self.destino:
             case "Marte":
                 self.intervalo = 10
+                self.intervalo_ciclo = 20
             case "LEO":
                 self.intervalo = 10
-            case _:
+                self.intervalo_ciclo = 8
+
+            case "Lua":
                 self.intervalo = 20
+                self.intervalo_ciclo = 12
 
         self.distance_remaining = float(self.distancia_total)
 
@@ -117,6 +122,15 @@ class Return:
                         "consumo_total_kw": round(self._consumo_total_atual, 1),
                     }
                 )
+
+                if self.tick % self.intervalo_ciclo == 0 and self.tick > 0:
+                    if self.callbacks.get("registrar_ciclo"):
+                        signal_pct = MissionReport.sinal_para_percentual(
+                            self.telemetry.signal,
+                            self.rx_warning_dbm,
+                            self.rx_critical_dbm,
+                        )
+                        self.callbacks["registrar_ciclo"](self.telemetry, signal_pct)
 
             self.tick += 1
 

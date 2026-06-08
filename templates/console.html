@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mission Control AI</title>
+<title>Orion MCS</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
@@ -406,7 +406,7 @@ body {
 <body>
 
 <div class="startup-screen" id="startupScreen">
-  <div class="startup-title">Mission Control AI</div>
+  <div class="startup-title">Orion MCS</div>
   <div class="startup-sub">Sistema de monitoramento de missão espacial</div>
   <div class="dest-buttons">
     <div class="dest-btn" onclick="iniciarMissao('1')">
@@ -430,7 +430,7 @@ body {
 <div class="console-wrap" id="consoleWrap">
   <div class="top-bar">
     <div class="top-left">
-      <span class="mission-badge">MISSION CONTROL AI</span>
+      <span class="mission-badge">Orion MCS</span>
       <span class="dest-display" id="destDisplay">—</span>
       <div class="phase-indicator">
         <div class="phase-dot" id="phaseDot"></div>
@@ -779,16 +779,47 @@ socket.on('log_entry', (data) => {
 socket.on('missao_finalizada', (data) => {
   let overlay = document.getElementById('resultOverlay');
   overlay.classList.add('active');
-  document.getElementById('resultIcon').textContent = data.sucesso ? '✓' : '✖';
-  document.getElementById('resultIcon').style.color = data.sucesso ? 'var(--accent-green)' : 'var(--accent-red)';
-  document.getElementById('resultTitle').textContent = data.sucesso ? 'Missão concluída' : 'Missão encerrada com falha';
-  document.getElementById('resultTitle').style.color = data.sucesso ? 'var(--accent-green)' : 'var(--accent-red)';
-  document.getElementById('resultSub').textContent = 'Status final: ' + data.status.toUpperCase();
-  document.getElementById('resultStats').innerHTML =
-    '<div class="result-stat"><div class="result-stat-label">Bateria</div><div class="result-stat-value" style="color:var(--accent-green)">' + data.battery + '%</div></div>' +
-    '<div class="result-stat"><div class="result-stat-label">Combustível</div><div class="result-stat-value" style="color:var(--accent-cyan)">' + data.fuel + '%</div></div>' +
-    '<div class="result-stat"><div class="result-stat-label">Radiação</div><div class="result-stat-value" style="color:var(--accent-purple)">' + data.radiation + ' mSv</div></div>' +
-    '<div class="result-stat"><div class="result-stat-label">Status</div><div class="result-stat-value">' + data.status + '</div></div>';
+
+  let sucesso = data.sucesso;
+  document.getElementById('resultIcon').textContent = sucesso ? '✓' : '✖';
+  document.getElementById('resultIcon').style.color = sucesso ? 'var(--accent-green)' : 'var(--accent-red)';
+  document.getElementById('resultTitle').textContent = sucesso ? 'Missão concluída' : 'Missão encerrada com falha';
+  document.getElementById('resultTitle').style.color = sucesso ? 'var(--accent-green)' : 'var(--accent-red)';
+
+  let r = data.relatorio;
+  let statsHtml = '';
+
+  if (r) {
+    document.getElementById('resultSub').textContent = r.classificacao_final + ' · Risco médio: ' + r.risco_medio;
+
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Ciclos analisados</div><div class="result-stat-value">' + r.ciclos_analisados + '</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Ciclo mais crítico</div><div class="result-stat-value" style="color:var(--accent-red)">Ciclo ' + r.ciclo_critico + '</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Bateria final</div><div class="result-stat-value" style="color:var(--accent-green)">' + data.battery + '%</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Combustível final</div><div class="result-stat-value" style="color:var(--accent-cyan)">' + data.fuel + '%</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Radiação total</div><div class="result-stat-value" style="color:var(--accent-purple)">' + data.radiation + ' mSv</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Ciclos críticos</div><div class="result-stat-value" style="color:var(--accent-red)">' + r.ciclos_criticos + '</div></div>';
+
+    statsHtml += '<div class="result-stat" style="grid-column:1/3"><div class="result-stat-label">Tendência</div><div class="result-stat-value" style="font-size:13px;color:var(--text-secondary)">' + r.tendencia + '</div></div>';
+    statsHtml += '<div class="result-stat" style="grid-column:1/3"><div class="result-stat-label">Área mais afetada</div><div class="result-stat-value" style="font-size:13px;color:var(--accent-amber)">' + r.area_mais_afetada + '</div></div>';
+
+    statsHtml += '<div class="result-stat" style="grid-column:1/3"><div class="result-stat-label">Médias por área</div><div style="margin-top:6px">';
+    for (let area in r.medias) {
+      let pts = r.pontuacao_por_area[area] || 0;
+      statsHtml += '<div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);padding:2px 0">';
+      statsHtml += '<span>' + area + '</span>';
+      statsHtml += '<span>' + r.medias[area] + ' · ' + pts + ' pts</span>';
+      statsHtml += '</div>';
+    }
+    statsHtml += '</div></div>';
+  } else {
+    document.getElementById('resultSub').textContent = 'Status: ' + data.status.toUpperCase();
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Bateria</div><div class="result-stat-value">' + data.battery + '%</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Combustível</div><div class="result-stat-value">' + data.fuel + '%</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Radiação</div><div class="result-stat-value">' + data.radiation + ' mSv</div></div>';
+    statsHtml += '<div class="result-stat"><div class="result-stat-label">Status</div><div class="result-stat-value">' + data.status + '</div></div>';
+  }
+
+  document.getElementById('resultStats').innerHTML = statsHtml;
 });
 
 function selecionarOpcao(index, el) {

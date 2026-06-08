@@ -1,7 +1,7 @@
 import random
 import math
 import time
-
+from MissionReport import MissionReport
 
 class Transit:
     distanciaSolTerra = 150_000_000.0
@@ -70,10 +70,15 @@ class Transit:
         match self.destino:
             case "Marte":
                 self.intervalo = 10
+                self.intervalo_ciclo = 20
+
             case "LEO":
                 self.intervalo = 10
+                self.intervalo_ciclo = 8
+
             case "Lua":
                 self.intervalo = 20
+                self.intervalo_ciclo = 12
 
         if duration > 1000:
             self.horas_por_tick = 50
@@ -146,7 +151,6 @@ class Transit:
 
             self._print_status(forcar=alertas_novos)
 
-            print(f"[DEBUG] callbacks keys: {list(self.callbacks.keys())}")
             if self.callbacks.get("emitir_telemetria"):
                 self.callbacks["emitir_telemetria"](
                     self.telemetry, "transit", self.tick, self.horas_por_tick,
@@ -159,6 +163,14 @@ class Transit:
                         "consumo_total_kw": round(self._consumo_total_atual, 1),
                     }
                 )
+            if self.tick % self.intervalo_ciclo == 0 and self.tick > 0:
+                if self.callbacks.get("registrar_ciclo"):
+                    signal_pct = MissionReport.sinal_para_percentual(
+                        self.telemetry.signal,
+                        self.rx_warning_dbm,
+                        self.rx_critical_dbm,
+                    )
+                    self.callbacks["registrar_ciclo"](self.telemetry, signal_pct)
 
             self.tick += 1
 

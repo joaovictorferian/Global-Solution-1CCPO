@@ -2,6 +2,8 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import threading
 import time
+from MissionReport import MissionReport
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'mission-control-ai'
@@ -61,8 +63,6 @@ def emitir_telemetria(telemetry, fase, tick, horas_por_tick, extras=None):
     }
     if extras:
         dados.update(extras)
-        print(f"[DEBUG] Dados extras emitidos: {format(extras)}")
-    print(f"[DEBUG] Emitindo: battery={dados['battery']} fuel={dados['fuel']} tick={dados['tick']} nuclear={dados['geracao_nuclear_kw']}")
     socketio.emit("telemetria", dados, namespace="/")
     time.sleep(0.05)
 
@@ -130,6 +130,8 @@ def rodar_missao(escolha):
     telemetry = Telemetry()
     cascade = CascadeFailure()
 
+    relatorio = MissionReport()
+
     callbacks = {
         "emitir_telemetria": emitir_telemetria,
         "emitir_evento": emitir_evento,
@@ -139,7 +141,9 @@ def rodar_missao(escolha):
         "emitir_cascade": emitir_cascade,
         "aguardar_resposta": aguardar_resposta_usuario,
         "emitir_contagem": emitir_contagem,
-        "emitir_audio": emitir_audio
+        "emitir_audio": emitir_audio,
+        "registrar_ciclo": lambda telemetry, signal_pct: relatorio.registrar_ciclo(telemetry, signal_pct),
+
     }
 
     # FASE 1 — LANÇAMENTO
@@ -174,6 +178,8 @@ def rodar_missao(escolha):
     retorno = Return(telemetry, fases["retorno"], nome, perfil_nave, engine_return, callbacks)
     telemetry = retorno.run()
 
+    relatorio_dados = relatorio.gerar_dados_frontend()
+
     # RESULTADO FINAL
     socketio.emit("missao_finalizada", {
         "sucesso": telemetry.sucesso,
@@ -182,7 +188,11 @@ def rodar_missao(escolha):
         "radiation": round(telemetry.radiation_exposure, 1),
         "status": telemetry.status,
         "log": telemetry.event_log,
+        "relatorio": relatorio_dados,
     }, namespace="/")
+
+    relatorio.gerar_relatorio(nome, telemetry.event_log)
+
 
 
 if __name__ == "__main__":

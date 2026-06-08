@@ -1,7 +1,7 @@
 import random
 import math
 import time
-from pip._internal.operations import check
+from MissionReport import MissionReport
 
 class Operation:
     capacidadeBateria_KWH = 200.0
@@ -41,10 +41,13 @@ class Operation:
         match self.destino:
             case "Marte":
                 self.intervalo = 10
+                self.intervalo_ciclo = 20
             case "LEO":
                 self.intervalo = 10
-            case _:
+                self.intervalo_ciclo = 8
+            case "Lua":
                 self.intervalo = 20
+                self.intervalo_ciclo = 12
 
         if duration > 1000:
             self.horas_por_tick = 50
@@ -111,6 +114,15 @@ class Operation:
                         "consumo_total_kw": round(self._consumo_total_atual, 1),
                     }
                 )
+
+            if self.tick % self.intervalo_ciclo == 0 and self.tick > 0:
+                if self.callbacks.get("registrar_ciclo"):
+                    signal_pct = MissionReport.sinal_para_percentual(
+                        self.telemetry.signal,
+                        self.rx_warning_dbm,
+                        self.rx_critical_dbm,
+                    )
+                    self.callbacks["registrar_ciclo"](self.telemetry, signal_pct)
 
             self.tick += 1
 

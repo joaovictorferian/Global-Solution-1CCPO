@@ -306,6 +306,25 @@ O console simula o painel de controle de uma espaçonave:
 
 O servidor Python emite eventos via SocketIO a cada tick. O frontend escuta esses eventos e atualiza os valores dos atributos em tempo real. Quando um evento aleatório ocorre, a simulação pausa e espera o usuário escolher uma ação pelo navegador.
 
+
+### Projeto em funcionamento
+
+## Tela inicial
+
+<img width="1575" height="806" alt="{69B452E4-45CA-42A4-A295-AA15CEFD2330}" src="https://github.com/user-attachments/assets/eb309bcb-675b-4d1c-813b-a9a293be0d0a" />
+
+## Console de monitoramento
+
+<img width="1787" height="880" alt="{59D02039-393D-4407-B046-614DA6DBBE4D}" src="https://github.com/user-attachments/assets/84cd133a-423a-481f-beaa-1c4b88f4be81" />
+
+## Eventos aleatórios e IA em funcionamento 
+
+<img width="1778" height="868" alt="{E8162875-DB80-4610-AEF0-DED07AEC0516}" src="https://github.com/user-attachments/assets/6e771d80-dca6-4449-8e09-f642df4f9e5d" />
+
+## Missão finalizada e relatório
+
+<img width="1639" height="828" alt="{38CF5CCA-0B1C-4A34-9F83-A738F8615084}" src="https://github.com/user-attachments/assets/226b09d5-377c-4f64-92c0-7ee105bbdded" />
+
 ---
 
 ## Fontes e referências
